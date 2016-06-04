@@ -70,7 +70,8 @@ class GoBot:
 
 
 class Goban:
-    Group = List[Tuple[int, int]]
+    Move = Tuple[int, int]
+    Group = List[Move]
 
     def __init__(self) -> None:
         self.votes = {}
@@ -78,7 +79,8 @@ class Goban:
         self.imgur_client = ImgurClient('6584aa67fc46a02', 'fda614da4406c63a395bd0748c1fb74adeccc5ef')
         self.move_pattern = re.compile(r'^([a-t])([1-9]|1[0-9])$', re.IGNORECASE)
         self.next_turn_color = 'black'
-        self.moves = [[None] * 19 for _ in range(19)]
+        self.moves = {(x, y): None for x in range(19) for y in range(19)}
+        self.ko = None
 
     def vote_move(self, move: str, user: str) -> str:
         if move.lower() == 'pass':
@@ -102,9 +104,23 @@ class Goban:
         return 'Voted for `{}`.'.format(move)
 
     def is_valid(self, move_reference: str) -> bool:
-        # TODO: Check if suicidal
-        x, y = self.get_coordinates(move_reference)
-        return self.moves[x][y] is None
+        move = self.get_coordinates(move_reference)
+
+        if self.moves[move] is not None:
+            return False
+
+        if self.get_liberties(self.build_group(move)) > 0:
+            return True
+
+        if self.ko == move:  # TODO: Superko
+            return False
+
+        for adjacent_move in self.get_adjacent_moves(move):
+            # If an adjacent move is in atari then playing this move will capture it, giving us a liberty.
+            if self.get_liberties(self.build_group(adjacent_move)) == 1:
+                return True
+
+        return False
 
     def get_votes(self) -> str:
         if len(self.votes) == 0:
@@ -123,27 +139,23 @@ class Goban:
         if len(self.votes) == 0:
             return None
 
-        move = choice(list(self.votes.values()))
+        move_reference = choice(list(self.votes.values()))
         self.votes = {}
 
-        x, y = self.get_coordinates(move)
+        move = self.get_coordinates(move_reference)
 
         # Place stone
-        self.moves[x][y] = self.next_turn_color
+        self.moves[move] = self.next_turn_color
         self.next_turn_color = 'white' if self.next_turn_color == 'black' else 'black'
 
         # Remove captures
-        if x + 1 < 19 and self.moves[x + 1][y] == self.next_turn_color:
-            self.remove_if_captured(x + 1, y)
-        if y + 1 < 19 and self.moves[x][y + 1] == self.next_turn_color:
-            self.remove_if_captured(x, y + 1)
-        if x - 1 >= 0 and self.moves[x - 1][y] == self.next_turn_color:
-            self.remove_if_captured(x - 1, y)
-        if y - 1 >= 0 and self.moves[x][y - 1] == self.next_turn_color:
-            self.remove_if_captured(x, y - 1)
+        self.ko = None
+        for adjacent_move in self.get_adjacent_moves(move):
+            if self.moves[adjacent_move] == self.next_turn_color:
+                self.remove_if_captured(adjacent_move)
 
         self.draw_board()
-        return 'Playing move `{}`.\n{}'.format(move, self.image_url)
+        return 'Playing move `{}`.\n{}'.format(move_reference, self.image_url)
 
     def get_coordinates(self, move_reference: str) -> (int, int):
         move_coords = self.move_pattern.match(move_reference).groups()
@@ -153,38 +165,54 @@ class Goban:
 
         return x, y
 
-    def remove_if_captured(self, x: int, y: int) -> None:
-        group = self.build_group(x, y)
-        if not self.has_liberties(group):
-            for x, y in group:
-                self.moves[x][y] = None
+    def remove_if_captured(self, move: Move) -> None:
+        group = self.build_group(move)
+        if self.get_liberties(group) == 0:
+            if len(group) == 1:
+                self.ko = group[0]
 
-    def has_liberties(self, group: Group) -> bool:
-        for x, y in group:
-            if (x + 1 < 19 and self.moves[x + 1][y] is None or
-                    y + 1 < 19 and self.moves[x][y + 1] is None or
-                    x - 1 >= 0 and self.moves[x - 1][y] is None or
-                    y - 1 >= 0 and self.moves[x][y - 1] is None):
-                return True
+            for group_move in group:
+                self.moves[group_move] = None
 
-        return False
+    def get_liberties(self, group: Group) -> bool:
+        liberties = 0
 
-    def build_group(self, x: int, y: int, group: Optional[Group]=None) -> Group:
+        for group_move in group:
+            for adjacent_move in self.get_adjacent_moves(group_move):
+                if self.moves[adjacent_move] is None:
+                    liberties += 1
+
+        return liberties
+
+    def build_group(self, move: Move, group: Optional[Group]=None) -> Group:
         if not group:
             group = []
 
-        if self.moves[x][y] and (x, y) not in group:
-            group.append((x, y))
-            if x + 1 < 19 and self.moves[x + 1][y] == self.moves[x][y]:
-                group = self.build_group(x + 1, y, group)
-            if y + 1 < 19 and self.moves[x][y + 1] == self.moves[x][y]:
-                group = self.build_group(x, y + 1, group)
-            if x - 1 >= 0 and self.moves[x - 1][y] == self.moves[x][y]:
-                group = self.build_group(x - 1, y, group)
-            if y - 1 >= 0 and self.moves[x][y - 1] == self.moves[x][y]:
-                group = self.build_group(x, y - 1, group)
+        if (len(group) == 0 or self.moves[move]) and move not in group:
+            group.append(move)
+            for adjacent_move in self.get_adjacent_moves(move):
+                if self.moves[adjacent_move] == self.moves[move]:
+                    group = self.build_group(adjacent_move, group)
 
         return group
+
+    def get_adjacent_moves(self, move: Move) -> Group:
+        x, y = move
+        adjacent_moves = []
+
+        if x + 1 < 19:
+            adjacent_moves.append((x + 1, y))
+
+        if y + 1 < 19:
+            adjacent_moves.append((x, y + 1))
+
+        if x - 1 > 0:
+            adjacent_moves.append((x - 1, y))
+
+        if y - 1 > 0:
+            adjacent_moves.append((x, y - 1))
+
+        return adjacent_moves
 
     def show_board(self) -> str:
         return self.image_url
@@ -195,8 +223,8 @@ class Goban:
         draw = ImageDraw.Draw(im)
         for x in range(19):
             for y in range(19):
-                if self.moves[x][y]:
-                    draw.ellipse([(x * 20 + 10, y * 20 + 10), (x * 20 + 30, y * 20 + 30)], fill=self.moves[x][y])
+                if self.moves[(x, y)]:
+                    draw.ellipse([(x * 20 + 10, y * 20 + 10), (x * 20 + 30, y * 20 + 30)], fill=self.moves[(x, y)])
 
         file_path = 'goban_with_moves.png'
         im.save(file_path, 'PNG')
