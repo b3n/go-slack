@@ -18,6 +18,7 @@ class GoBot:
         self.slack_client = SlackClient(token)
         self.goban = Goban()
         self.last_ran_crons = 0
+        self.last_ping = 0
         self.channels = []
 
     def start(self) -> None:
@@ -28,12 +29,21 @@ class GoBot:
                 for event in self.slack_client.rtm_read():
                     if 'type' in event and event['type'] == 'message' and 'text' in event and event['text'][0] == '!':
                         self.process_command(event['text'], event['channel'], event['user'])
-                    print(event)
+
+                    if DEBUG:
+                        print(event)
 
                 self.hourly_crons()
+                self.ping()
                 sleep(1)
         else:
             print('Connection Failed, invalid token?')
+
+    def ping(self) -> None:
+        now = time()
+        if now > self.last_ping + 3:
+            self.slack_client.server.ping()
+            self.last_ping = now
 
     def process_command(self, text: str, channel: str, user: str) -> None:
         words = text.split()
