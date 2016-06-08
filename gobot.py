@@ -152,10 +152,10 @@ class Goban:
         if y + 1 < 19:
             adjacent_moves.append((x, y + 1))
 
-        if x - 1 > 0:
+        if x - 1 >= 0:
             adjacent_moves.append((x - 1, y))
 
-        if y - 1 > 0:
+        if y - 1 >= 0:
             adjacent_moves.append((x, y - 1))
 
         return adjacent_moves
