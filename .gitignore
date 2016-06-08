@@ -1,4 +1,5 @@
 *.xcf
 *.py[cod]
 *.pkl
+.idea/*
 goban_with_moves.png

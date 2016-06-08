@@ -28,26 +28,28 @@ class Goban:
         self.moves = {(x, y): None for x in range(19) for y in range(19)}
         self.ko = None
 
-    def vote_move(self, move: str, user: str) -> str:
-        if move.lower() == 'pass':
+    def vote_move(self, move_reference: str, user: str) -> str:
+        move_reference = move_reference.upper()
+
+        if move_reference == 'PASS':
             return '// TODO: Implement passing and end game... :robot_face:'
 
-        if not self.move_pattern.match(move):
-            return "Oops, I don't understand `{}`, is that supposed to be somewhere on the board?".format(move)
+        if not self.move_pattern.match(move_reference):
+            return "Oops, I don't understand `{}`, is that supposed to be somewhere on the board?".format(move_reference)
 
-        if not self.is_valid(move):
-            return '`{}` seems to be an invalid move.'.format(move)
+        if not self.is_valid(move_reference):
+            return '`{}` seems to be an invalid move.'.format(move_reference)
 
         if user in self.votes:
-            if self.votes[user].lower() == move.lower():
-                return "You've already voted for `{}`!".format(move)
+            if self.votes[user] == move_reference:
+                return "You've already voted for `{}`!".format(move_reference)
             else:
                 old_move = self.votes[user]
-                self.votes[user] = move
-                return 'Changed vote from `{}` to `{}`!'.format(old_move, move)
+                self.votes[user] = move_reference
+                return 'Changed vote from `{}` to `{}`!'.format(old_move, move_reference)
 
-        self.votes[user] = move
-        return 'Voted for `{}`.'.format(move)
+        self.votes[user] = move_reference
+        return 'Voted for `{}`.'.format(move_reference)
 
     def is_valid(self, move_reference: str) -> bool:
         move = self.get_coordinates(move_reference)
