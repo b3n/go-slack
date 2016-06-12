@@ -102,7 +102,7 @@ class Goban:
             if self.moves[adjacent_move] == self.next_turn_color:
                 self.remove_if_captured(adjacent_move)
 
-        self.draw_board()
+        self.draw_board(move)
         return 'Playing move `{}`.\n{}'.format(move_reference, self.image_url)
 
     def get_coordinates(self, move_reference: str) -> (int, int):
@@ -165,7 +165,7 @@ class Goban:
     def show_board(self) -> str:
         return self.image_url
 
-    def draw_board(self) -> None:
+    def draw_board(self, highlighted_move: Move) -> None:
         im = Image.open('goban_blank.png')
 
         draw = ImageDraw.Draw(im)
@@ -173,6 +173,10 @@ class Goban:
             for y in range(19):
                 if self.moves[(x, y)]:
                     draw.ellipse([(x * 20 + 10, y * 20 + 10), (x * 20 + 30, y * 20 + 30)], fill=self.moves[(x, y)])
+
+        x, y = highlighted_move
+        highlighted_color = 'white' if self.moves[(x, y)] == 'black' else 'black'
+        draw.arc([(x * 20 + 15, y * 20 + 15), (x * 20 + 25, y * 20 + 25)], 0, 360, fill=highlighted_color)
 
         file_path = 'goban_with_moves.png'
         im.save(file_path, 'PNG')
