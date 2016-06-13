@@ -9,10 +9,10 @@ from pickle import dump, load
 
 from slackclient import SlackClient
 from imgurpython import ImgurClient
-from PIL import Image, ImageDraw
+from PIL import Image
 
 
-DEBUG = True
+DEBUG = False
 
 
 class Goban:
