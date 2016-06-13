@@ -166,20 +166,23 @@ class Goban:
         return self.image_url
 
     def draw_board(self, highlighted_move: Move) -> None:
-        im = Image.open('goban_blank.png')
+        goban = Image.open('goban_blank.png')
+        stone = {
+            'black': Image.open('black.png'),
+            'white': Image.open('white.png'),
+        }
+        shadow = Image.open('shadow.png')
 
-        draw = ImageDraw.Draw(im)
+        x, y = highlighted_move
+        goban.paste(shadow, (x * 20 + 5, y * 20 + 5), mask=shadow)
+
         for x in range(19):
             for y in range(19):
                 if self.moves[(x, y)]:
-                    draw.ellipse([(x * 20 + 10, y * 20 + 10), (x * 20 + 30, y * 20 + 30)], fill=self.moves[(x, y)])
-
-        x, y = highlighted_move
-        highlighted_color = 'white' if self.moves[(x, y)] == 'black' else 'black'
-        draw.arc([(x * 20 + 15, y * 20 + 15), (x * 20 + 25, y * 20 + 25)], 0, 360, fill=highlighted_color)
+                    goban.paste(stone[self.moves[x, y]], (x * 20 + 10, y * 20 + 10), mask=stone[self.moves[x, y]])
 
         file_path = 'goban_with_moves.png'
-        im.save(file_path, 'PNG')
+        goban.save(file_path, 'PNG')
         upload = self.imgur_client.upload_from_path(file_path)
 
         self.image_url = upload['link']
