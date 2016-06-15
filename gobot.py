@@ -1,7 +1,7 @@
 from time import sleep, time
 from datetime import datetime
 import re
-from random import choice
+from random import choice, randrange
 from sys import argv
 from collections import Counter
 from typing import List, Optional, Tuple
@@ -31,6 +31,9 @@ class Goban:
     def vote_move(self, move_reference: str, user: str) -> str:
         move_reference = move_reference.upper()
 
+        if move_reference == 'RANDOM':
+            return self.vote_random(user)
+
         if move_reference == 'PASS':
             return '// TODO: Implement passing and end game... :robot_face:'
 
@@ -51,10 +54,19 @@ class Goban:
         self.votes[user] = move_reference
         return 'Voted for `{}`.'.format(move_reference)
 
+    def vote_random(self, user: str) -> str:
+        # Roll the dice 9 times to find a valid move, if that doesn't work just attempt to vote for the invalid move. ¯\_(ツ)_/¯
+        for _ in range(9):
+            random_move_reference = chr(randrange(ord('A'), ord('S') + 1)) + str(randrange(1, 19 + 1))
+            if self.is_valid(random_move_reference):
+                break
+
+        return self.vote_move(random_move_reference, user)
+
     def is_valid(self, move_reference: str) -> bool:
         move = self.get_coordinates(move_reference)
 
-        if self.moves[move] is not None:
+        if move not in self.moves or self.moves[move] is not None:
             return False
 
         if self.get_liberties(self.build_group(move)) > 0:
