@@ -143,7 +143,7 @@ class Goban:
             if not self.moves[move]:
                 colour = self.next_turn_color
 
-        if (len(group) == 0 or colour) and move not in group:
+        if colour and move not in group:
             group.append(move)
             for adjacent_move in self.get_adjacent_moves(move):
                 if self.moves[adjacent_move] == colour:
