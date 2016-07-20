@@ -136,13 +136,17 @@ class Goban:
         return liberties
 
     def build_group(self, move: Move, group: Optional[Group]=None) -> Group:
+        colour = self.moves[move]
+        
         if not group:
             group = []
+            if not self.moves[move]:
+                colour = self.next_turn_color
 
-        if (len(group) == 0 or self.moves[move]) and move not in group:
+        if (len(group) == 0 or colour) and move not in group:
             group.append(move)
             for adjacent_move in self.get_adjacent_moves(move):
-                if self.moves[adjacent_move] == self.moves[move]:
+                if self.moves[adjacent_move] == colour:
                     group = self.build_group(adjacent_move, group)
 
         return group
