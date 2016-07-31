@@ -18,18 +18,13 @@ class Goban:
         self.next_turn_color = 'black'
         self.moves = {(x, y): None for x in range(19) for y in range(19)}
         self.ko = None
+        self.passed = False
 
     def vote_move(self, move_reference: str, user: str) -> str:
         move_reference = move_reference.upper()
 
         if move_reference == 'RANDOM':
             return self.vote_random(user)
-
-        if move_reference == 'PASS':
-            return '// TODO: Implement passing and end game... :robot_face:'
-
-        if not self.move_pattern.match(move_reference):
-            return "Oops, I don't understand `{}`, is that supposed to be somewhere on the board?".format(move_reference)
 
         if not self.is_valid(move_reference):
             return '`{}` seems to be an invalid move.'.format(move_reference)
@@ -55,6 +50,12 @@ class Goban:
         return self.vote_move(random_move_reference, user)
 
     def is_valid(self, move_reference: str) -> bool:
+        if move_reference in ('PASS', 'RESIGN'):
+            return True
+
+        if not self.move_pattern.match(move_reference):
+            return False
+
         move = self.get_coordinates(move_reference)
 
         if move not in self.moves or self.moves[move] is not None:
@@ -93,11 +94,19 @@ class Goban:
         move_reference = choice(list(self.votes.values()))
         self.votes = {}
 
+        if move_reference == 'PASS':
+            return self.pass_move()
+        else:
+            self.passed = False
+
+        if move_reference == 'RESIGN':
+            return self.resign()
+
         move = self.get_coordinates(move_reference)
 
         # Place stone
         self.moves[move] = self.next_turn_color
-        self.next_turn_color = 'white' if self.next_turn_color == 'black' else 'black'
+        self.next_turn_color = self._toggle_color()
 
         # Remove captures
         self.ko = None
@@ -107,6 +116,31 @@ class Goban:
 
         self.draw_board(move)
         return 'Playing move `{}`.\n{}'.format(move_reference, self.image_url)
+
+    def pass_move(self) -> str:
+        message = '{} passes.'.format(self.next_turn_color)
+
+        if self.passed:
+            self.restart_game()
+            message += ' Game over! :tada:'
+        else:
+            self.next_turn_color = self._toggle_color()
+            self.passed = True
+
+        return message
+
+    def resign(self) -> str:
+        message = '{} resigns. {} wins! :tada:'.format(self.next_turn_color, self._toggle_color())
+
+        self.restart_game()
+
+        return message
+
+    def restart_game(self) -> None:
+        self.__init__()
+
+    def _toggle_color(self) -> str:
+        return 'white' if self.next_turn_color == 'black' else 'black'
 
     def get_coordinates(self, move_reference: str) -> (int, int):
         move_coords = self.move_pattern.match(move_reference).groups()
