@@ -32,7 +32,7 @@ class GoBot:
 
                 self.hourly_crons()
                 self.ping()
-                sleep(1)
+                sleep(0.1)
         else:
             print('Connection Failed, invalid token?')
 
