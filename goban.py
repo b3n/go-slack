@@ -41,13 +41,19 @@ class Goban:
         return 'Voted for `{}`.'.format(move_reference)
 
     def vote_random(self, user: str) -> str:
-        # Roll the dice 9 times to find a valid move, if that doesn't work just attempt to vote for the invalid move. ¯\_(ツ)_/¯
+        # Roll the dice 9 times to find a valid move
         for _ in range(9):
             random_move_reference = chr(randrange(ord('A'), ord('S') + 1)) + str(randrange(1, 19 + 1))
             if self.is_valid(random_move_reference):
-                break
+                return self.vote_move(random_move_reference, user)
 
-        return self.vote_move(random_move_reference, user)
+        # If the board is so full that that didn't work, find all valid moves and just pick one of them
+        ascii_moves = [chr(x)+str(y+1) for x in range(ord('A'), ord('S')+1) for y in range(19)]
+        valid_moves = [move for move in ascii_moves if self.is_valid(move)]
+
+        if len(valid_moves) == 0:
+            return self.vote_move('PASS', user)
+        return self.vote_move(choice(valid_moves), user)
 
     def is_valid(self, move_reference: str) -> bool:
         if move_reference in ('PASS', 'RESIGN'):
