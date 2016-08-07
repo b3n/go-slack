@@ -2,8 +2,11 @@ from collections import Counter
 from typing import List, Optional, Tuple
 import re
 from random import choice, randrange
+from copy import deepcopy
 from imgurpython import ImgurClient
 from PIL import Image
+
+MOVE_PATTERN = re.compile(r'^([a-t])([1-9]|1[0-9])$', re.IGNORECASE)
 
 
 class Goban:
@@ -14,10 +17,10 @@ class Goban:
         self.votes = {}
         self.image_url = 'https://i.imgur.com/iWzRKV0.png'
         self.imgur_client = ImgurClient('6584aa67fc46a02', 'fda614da4406c63a395bd0748c1fb74adeccc5ef')
-        self.move_pattern = re.compile(r'^([a-t])([1-9]|1[0-9])$', re.IGNORECASE)
         self.next_turn_color = 'black'
         self.moves = {(x, y): None for x in range(19) for y in range(19)}
-        self.ko = None
+        self.history = [{**self.moves, 'player': self.next_turn_color}]
+        self.captures = {'black': 0, 'white': 0}
         self.passed = False
 
     def vote_move(self, move_reference: str, user: str) -> str:
@@ -41,19 +44,25 @@ class Goban:
         return 'Voted for `{}`.'.format(move_reference)
 
     def vote_random(self, user: str) -> str:
-        # Roll the dice 9 times to find a valid move, if that doesn't work just attempt to vote for the invalid move. ¯\_(ツ)_/¯
+        # Roll the dice 9 times to find a valid move
         for _ in range(9):
             random_move_reference = chr(randrange(ord('A'), ord('S') + 1)) + str(randrange(1, 19 + 1))
             if self.is_valid(random_move_reference):
-                break
+                return self.vote_move(random_move_reference, user)
 
-        return self.vote_move(random_move_reference, user)
+        # If the board is so full that that didn't work, find all valid moves and just pick one of them
+        ascii_moves = [chr(x)+str(y+1) for x in range(ord('A'), ord('S')+1) for y in range(19)]
+        valid_moves = [move for move in ascii_moves if self.is_valid(move)]
+
+        if len(valid_moves) == 0:
+            return self.vote_move('PASS', user)
+        return self.vote_move(choice(valid_moves), user)
 
     def is_valid(self, move_reference: str) -> bool:
         if move_reference in ('PASS', 'RESIGN'):
             return True
 
-        if not self.move_pattern.match(move_reference):
+        if not MOVE_PATTERN.match(move_reference):
             return False
 
         move = self.get_coordinates(move_reference)
@@ -62,17 +71,20 @@ class Goban:
             return False
 
         if self.get_liberties(self.build_group(move)) > 0:
-            return True
-
-        if self.ko == move:  # TODO: Superko
-            return False
+            return not self.superko(move)
 
         for adjacent_move in self.get_adjacent_moves(move):
             # If an adjacent move is in atari then playing this move will capture it, giving us a liberty.
             if self.get_liberties(self.build_group(adjacent_move)) == 1:
-                return True
+                return not self.superko(move)
 
         return False
+
+    def superko(self, move) -> bool:
+        # check if this move would return us to an earlier game state
+        potential_game_state = deepcopy(self)
+        potential_game_state.place_stone(move)
+        return potential_game_state.current_game_state() in self.history
 
     def get_votes(self) -> str:
         if len(self.votes) == 0:
@@ -103,19 +115,21 @@ class Goban:
             return self.resign()
 
         move = self.get_coordinates(move_reference)
+        self.place_stone(move)
 
+        self.history.append(self.current_game_state())
+        self.draw_board(move)
+        return 'Playing move `{}`.\n{}'.format(move_reference, self.image_url)
+
+    def place_stone(self, move) -> None:
         # Place stone
         self.moves[move] = self.next_turn_color
         self.next_turn_color = self._toggle_color()
 
         # Remove captures
-        self.ko = None
         for adjacent_move in self.get_adjacent_moves(move):
             if self.moves[adjacent_move] == self.next_turn_color:
                 self.remove_if_captured(adjacent_move)
-
-        self.draw_board(move)
-        return 'Playing move `{}`.\n{}'.format(move_reference, self.image_url)
 
     def pass_move(self) -> str:
         message = '{} passes.'.format(self.next_turn_color)
@@ -126,6 +140,7 @@ class Goban:
         else:
             self.next_turn_color = self._toggle_color()
             self.passed = True
+            self.history.append(self.current_game_state())
 
         return message
 
@@ -142,8 +157,11 @@ class Goban:
     def _toggle_color(self) -> str:
         return 'white' if self.next_turn_color == 'black' else 'black'
 
+    def current_game_state(self) -> dict:
+        return {**self.moves, 'player': self.next_turn_color}
+
     def get_coordinates(self, move_reference: str) -> (int, int):
-        move_coords = self.move_pattern.match(move_reference).groups()
+        move_coords = MOVE_PATTERN.match(move_reference).groups()
 
         x = ord(move_coords[0].upper()) - ord('A')
         y = 19 - int(move_coords[1])
@@ -153,9 +171,7 @@ class Goban:
     def remove_if_captured(self, move: Move) -> None:
         group = self.build_group(move)
         if self.get_liberties(group) == 0:
-            if len(group) == 1:
-                self.ko = group[0]
-
+            self.captures[self._toggle_color()] += len(group)
             for group_move in group:
                 self.moves[group_move] = None
 
@@ -205,6 +221,10 @@ class Goban:
 
     def show_board(self) -> str:
         return self.image_url
+
+    def get_captures(self) -> str:
+        return "Number of stones captured by each player:\nBlack: {}\nWhite: {}".format(
+            self.captures['black'], self.captures['white'])
 
     def draw_board(self, highlighted_move: Move) -> None:
         goban = Image.open('goban_blank.png')

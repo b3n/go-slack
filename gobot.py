@@ -54,6 +54,8 @@ class GoBot:
                 result = "You need to type a move, e.g. `!vote J10`. I'm just a humble bot, not a mind reader."
         elif command == 'votes':
             result = self.goban.get_votes()
+        elif command == 'captures':
+            result = self.goban.get_captures()
         elif command == 'show':
             result = self.goban.show_board()
         else:
