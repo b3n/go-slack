@@ -8,6 +8,7 @@ from PIL import Image
 
 MOVE_PATTERN = re.compile(r'^([a-t])([1-9]|1[0-9])$', re.IGNORECASE)
 
+
 class Goban:
     Move = Tuple[int, int]
     Group = List[Move]
@@ -19,6 +20,7 @@ class Goban:
         self.next_turn_color = 'black'
         self.moves = {(x, y): None for x in range(19) for y in range(19)}
         self.history = [{**self.moves, 'player': self.next_turn_color}]
+        self.captures = {'black': 0, 'white': 0}
         self.passed = False
 
     def vote_move(self, move_reference: str, user: str) -> str:
@@ -169,6 +171,7 @@ class Goban:
     def remove_if_captured(self, move: Move) -> None:
         group = self.build_group(move)
         if self.get_liberties(group) == 0:
+            self.captures[self._toggle_color()] += len(group)
             for group_move in group:
                 self.moves[group_move] = None
 
@@ -218,6 +221,10 @@ class Goban:
 
     def show_board(self) -> str:
         return self.image_url
+
+    def get_captures(self) -> str:
+        return "Number of stones captured by each player:\nBlack: {}\nWhite: {}".format(
+            self.captures['black'], self.captures['white'])
 
     def draw_board(self, highlighted_move: Move) -> None:
         goban = Image.open('goban_blank.png')
