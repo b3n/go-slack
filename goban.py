@@ -124,6 +124,7 @@ class Goban:
             return None
 
         move = choice(list(self.votes.values()))
+        move.hidden = False
         self.votes = {}
 
         if move.move_reference == 'PASS':

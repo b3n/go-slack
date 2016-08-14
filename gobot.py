@@ -61,6 +61,12 @@ class GoBot:
 
         self.slack_client.rtm_send_message(channel, result)
 
+        if private_message and 'Voted for' in result:
+            # Send a public announcement.
+            user_info = self.slack_client.api_call('users.info', user=user)['user']
+            message = '@{} {}'.format(user_info['name'], result)
+            self.slack_client.rtm_send_message(config.CHANNEL, message)
+
     def hourly_crons(self) -> None:
         now = time()
 
