@@ -1,1 +1,2 @@
-DEBUG = False
+DEBUG = True
+CHANNEL = 'random'

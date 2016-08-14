@@ -5,7 +5,7 @@ from pickle import dump, load
 from slackclient import SlackClient
 
 import config
-from goban import Goban
+from goban import Goban, Move
 
 
 class GoBot:
@@ -15,17 +15,15 @@ class GoBot:
         self.slack_client = SlackClient(token)
         self.last_ran_crons = 0
         self.last_ping = 0
-        self.channels = []
         self.goban = self.load_goban()
 
     def start(self) -> None:
         if self.slack_client.rtm_connect():
-            all_channels = self.slack_client.api_call('channels.list')['channels']
-            self.channels = [channel['id'] for channel in all_channels if channel['is_member']]
             while True:
                 for event in self.slack_client.rtm_read():
                     if 'type' in event and event['type'] == 'message' and 'text' in event and event['text'][0] == '!':
-                        self.process_command(event['text'], event['channel'], event['user'])
+                        private_message = event['channel'][0] == 'D'
+                        self.process_command(event['text'], event['channel'], event['user'], private_message)
 
                     if config.DEBUG:
                         print(event)
@@ -42,14 +40,14 @@ class GoBot:
             self.slack_client.server.ping()
             self.last_ping = now
 
-    def process_command(self, text: str, channel: str, user: str) -> None:
+    def process_command(self, text: str, channel: str, user: str, private_message: bool) -> None:
         words = text.split()
         command = words[0][1:].lower()
         arguments = words[1:]
 
         if command == 'vote':
             if len(arguments) > 0:
-                result = self.goban.vote_move(arguments[0], user)
+                result = self.goban.vote_move(Move(arguments[0], private_message), user)
             else:
                 result = "You need to type a move, e.g. `!vote J10`. I'm just a humble bot, not a mind reader."
         elif command == 'votes':
@@ -67,14 +65,14 @@ class GoBot:
         now = time()
 
         if config.DEBUG:
-            run_cron = now >= self.last_ran_crons + 10
+            run_cron = now >= self.last_ran_crons + 15
         else:
             run_cron = now >= self.last_ran_crons + 60 * 60 and datetime.now().minute == 0
 
         if run_cron:
             result = self.goban.play_move()
             if result:
-                self.slack_client.rtm_send_message(self.channels[0], result)
+                self.slack_client.rtm_send_message(config.CHANNEL, result)
                 self.save_goban()
 
             self.last_ran_crons = now
