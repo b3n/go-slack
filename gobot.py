@@ -1,8 +1,8 @@
-from time import sleep, time
 from datetime import datetime
-from sys import argv
 from pickle import dump, load
 from slackclient import SlackClient
+from sys import argv
+from time import sleep, time
 
 import config
 from goban import Goban, Move
@@ -32,7 +32,7 @@ class GoBot:
                 self.ping()
                 sleep(0.1)
         else:
-            print('Connection Failed, invalid token?')
+            print('Connection Failed. Invalid token?')
 
     def ping(self) -> None:
         now = time()
@@ -57,11 +57,11 @@ class GoBot:
         elif command == 'show':
             result = self.goban.show_board()
         else:
-            result = 'Invalid command, try: `!vote`, `!votes`, `!show`.'
+            result = 'Invalid command, try: `!vote`, `!votes`, `!show`, `!captures`.'
 
         self.slack_client.rtm_send_message(channel, result)
 
-        if private_message and 'Voted for' in result:
+        if private_message and ('Voted' in result or 'Changed' in result):
             # Send a public announcement.
             user_info = self.slack_client.api_call('users.info', user=user)['user']
             message = '@{} {}'.format(user_info['name'], result)

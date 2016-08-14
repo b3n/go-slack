@@ -1,8 +1,9 @@
 from collections import Counter
+from copy import deepcopy
+from random import choice, randrange
 from typing import List, Optional, Tuple
 import re
-from random import choice, randrange
-from copy import deepcopy
+
 from imgurpython import ImgurClient
 from PIL import Image
 
@@ -18,8 +19,8 @@ class Move:
         return '`SURPRISE`' if self.hidden else '`{}`'.format(self.move_reference)
 
     @classmethod
-    def from_coordinates(cls, x: int, y: int):
-        return cls(chr(ord('A') + x) + str(19 - y))
+    def from_coordinates(cls, x: int, y: int, hidden: bool=False):
+        return cls(chr(ord('A') + x) + str(19 - y), hidden)
 
     @property
     def coordinates(self) -> Optional[Tuple[int, int]]:
@@ -68,17 +69,18 @@ class Goban:
     def vote_random(self, user: str, hidden: bool) -> str:
         # Roll the dice 9 times to find a valid move
         for _ in range(9):
-            random_move = Move(chr(randrange(ord('A'), ord('S') + 1)) + str(randrange(1, 19 + 1)), hidden)
+            random_move = Move.from_coordinates(randrange(0, 19), randrange(0, 19), hidden)
             if self.is_valid(random_move):
                 return self.vote_move(random_move, user)
 
         # If the board is so full that that didn't work, find all valid moves and just pick one of them
-        ascii_moves = [chr(x)+str(y+1) for x in range(ord('A'), ord('S')+1) for y in range(19)]
-        valid_moves = [move for move in ascii_moves if self.is_valid(Move(move, hidden))]
+        all_moves = [Move.from_coordinates(x, y, hidden) for x in range(19) for y in range(19)]
+        valid_moves = [move for move in all_moves if self.is_valid(move)]
 
         if len(valid_moves) == 0:
             return self.vote_move(Move('pass', hidden), user)
-        return self.vote_move(Move(choice(valid_moves), hidden), user)
+        else:
+            return self.vote_move(choice(valid_moves), user)
 
     def is_valid(self, move: Move) -> bool:
         if move.move_reference in ('PASS', 'RESIGN'):
@@ -94,14 +96,15 @@ class Goban:
             return not self.superko(move)
 
         for adjacent_move in self.get_adjacent_moves(move):
-            # If an adjacent move is in atari then playing this move will capture it, giving us a liberty.
+            # If an adjacent move is in atari then playing this move will capture it, giving us a
+            # liberty.
             if self.get_liberties(self.build_group(adjacent_move)) == 1:
                 return not self.superko(move)
 
         return False
 
     def superko(self, move: Move) -> bool:
-        # check if this move would return us to an earlier game state
+        # check if this move would return us to an earlier game state.
         potential_game_state = deepcopy(self)
         potential_game_state.place_stone(move)
         return potential_game_state.current_game_state() in self.history
@@ -235,7 +238,7 @@ class Goban:
         return self.image_url
 
     def get_captures(self) -> str:
-        return "Number of stones captured by each player:\nBlack: {}\nWhite: {}".format(
+        return 'Number of stones captured by each player:\nBlack: {}\nWhite: {}'.format(
             self.captures['black'], self.captures['white'])
 
     def draw_board(self, highlighted_move: Move) -> None:
@@ -252,7 +255,9 @@ class Goban:
         for x in range(19):
             for y in range(19):
                 if self.moves[(x, y)]:
-                    goban.paste(stone[self.moves[x, y]], (x * 20 + 10, y * 20 + 10), mask=stone[self.moves[x, y]])
+                    goban.paste(stone[self.moves[x, y]],
+                                (x * 20 + 10, y * 20 + 10),
+                                mask=stone[self.moves[x, y]])
 
         file_path = 'goban_with_moves.png'
         goban.save(file_path, 'PNG')
