@@ -49,7 +49,7 @@ class Goban:
         self.passed = False
 
     def vote_move(self, move: Move, user: str) -> str:
-        if move.move_reference == 'RANDOM':
+        if move.move_reference in ('RANDOM', ':TROLL:'):
             return self.vote_random(user, move.hidden)
 
         if not self.is_valid(move):
