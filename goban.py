@@ -7,6 +7,8 @@ import re
 from imgurpython import ImgurClient
 from PIL import Image
 
+import config
+
 
 class Move:
     MOVE_PATTERN = re.compile(r'^([a-t])([1-9]|1[0-9])$', re.IGNORECASE)
@@ -48,8 +50,10 @@ class Goban:
         self.captures = {'black': 0, 'white': 0}
         self.passed = False
 
+        config.ALIASES.update({k: [alias.upper() for alias in v] for k, v in config.ALIASES.items()})
+
     def vote_move(self, move: Move, user: str) -> str:
-        if move.move_reference in ('RANDOM', ':TROLL:'):
+        if move.move_reference in config.ALIASES['RANDOM']:
             return self.vote_random(user, move.hidden)
 
         if not self.is_valid(move):
@@ -83,7 +87,7 @@ class Goban:
             return self.vote_move(choice(valid_moves), user)
 
     def is_valid(self, move: Move) -> bool:
-        if move.move_reference in ('PASS', 'RESIGN'):
+        if move.move_reference in config.ALIASES['PASS'] + config.ALIASES['RESIGN']:
             return True
 
         if not move.coordinates:
@@ -130,12 +134,12 @@ class Goban:
         move.hidden = False
         self.votes = {}
 
-        if move.move_reference == 'PASS':
+        if move.move_reference in config.ALIASES['PASS']:
             return self.pass_move()
         else:
             self.passed = False
 
-        if move.move_reference == 'RESIGN':
+        if move.move_reference in config.ALIASES['RESIGN']:
             return self.resign()
 
         self.place_stone(move)
