@@ -3,6 +3,7 @@ from pickle import dump, load
 from slackclient import SlackClient
 from sys import argv
 from time import sleep, time
+from websocket import WebSocketConnectionClosedException
 
 import config
 from goban import Goban, Move
@@ -19,18 +20,27 @@ class GoBot:
 
     def start(self) -> None:
         if self.slack_client.rtm_connect():
-            while True:
-                for event in self.slack_client.rtm_read():
-                    if 'type' in event and event['type'] == 'message' and 'text' in event and event['text'][0] == '!':
-                        private_message = event['channel'][0] == 'D'
-                        self.process_command(event['text'], event['channel'], event['user'], private_message)
+            try:
+                while True:
+                    for event in self.slack_client.rtm_read():  # TODO: If the connection is dead, try/catch reconnect?
+                        if 'type' in event and event['type'] == 'message' and 'text' in event and event['text'][0] == '!':
+                            private_message = event['channel'][0] == 'D'
+                            self.process_command(event['text'], event['channel'], event['user'], private_message)
 
-                    if config.DEBUG:
-                        print(event)
+                        if config.DEBUG:
+                            print(event)
 
-                self.hourly_crons()
-                self.ping()
-                sleep(0.1)
+                    self.hourly_crons()
+                    self.ping()
+                    sleep(0.1)
+
+            # There seems to be a bug with `slackclient==1.0.0` (github.com/slackhq/python-slackclient/issues/118), so
+            # for now if the connection dies like this let's just start it up again.
+            except WebSocketConnectionClosedException:
+                if config.DEBUG:
+                    print('Restarting connection.')
+                self.start()
+
         else:
             print('Connection Failed. Invalid token?')
 
