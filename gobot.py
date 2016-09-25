@@ -4,6 +4,7 @@ from slackclient import SlackClient
 from sys import argv
 from time import sleep, time
 from websocket import WebSocketConnectionClosedException
+import pycron
 
 import config
 from goban import Goban, Move
@@ -14,7 +15,7 @@ class GoBot:
 
     def __init__(self, token: str) -> None:
         self.slack_client = SlackClient(token)
-        self.last_ran_crons = 0
+        self.ran_cron = False
         self.last_ping = 0
         self.goban = self.load_goban()
 
@@ -22,7 +23,7 @@ class GoBot:
         if self.slack_client.rtm_connect():
             try:
                 while True:
-                    for event in self.slack_client.rtm_read():  # TODO: If the connection is dead, try/catch reconnect?
+                    for event in self.slack_client.rtm_read():
                         if 'type' in event and event['type'] == 'message' and 'text' in event and event['text'][0] == '!':
                             private_message = event['channel'][0] == 'D'
                             self.process_command(event['text'], event['channel'], event['user'], private_message)
@@ -30,7 +31,7 @@ class GoBot:
                         if config.DEBUG:
                             print(event)
 
-                    self.hourly_crons()
+                    self.run_cron()
                     self.ping()
                     sleep(0.1)
 
@@ -77,21 +78,17 @@ class GoBot:
             message = '@{} {}'.format(user_info['name'], result)
             self.slack_client.rtm_send_message(config.CHANNEL, message)
 
-    def hourly_crons(self) -> None:
-        now = time()
-
-        if config.DEBUG:
-            run_cron = now >= self.last_ran_crons + 15
-        else:
-            run_cron = now >= self.last_ran_crons + 60 * 60 and datetime.now().minute == 0
-
-        if run_cron:
+    def run_cron(self) -> None:
+        should_run = pycron.is_now(config.CRON)
+        if not self.ran_cron and should_run:
+            self.ran_cron = True
             result = self.goban.play_move()
             if result:
                 self.slack_client.rtm_send_message(config.CHANNEL, result)
                 self.save_goban()
 
-            self.last_ran_crons = now
+        elif not should_run:
+            self.ran_cron = False
 
     def save_goban(self) -> None:
         with open(self.STATE_FILE_NAME, 'wb') as file:
