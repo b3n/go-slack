@@ -17,6 +17,9 @@ class Move:
         self.move_reference = move_reference.upper()
         self.hidden = hidden
 
+    def __eq__(self, other):
+        return self.move_reference == other.move_reference
+
     def __str__(self) -> str:
         return '`SURPRISE`' if self.hidden else '`{}`'.format(self.move_reference)
 
