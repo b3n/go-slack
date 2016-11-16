@@ -17,11 +17,18 @@ class Move:
         self.move_reference = move_reference.upper()
         self.hidden = hidden
 
-    def __eq__(self, other):
+    def __eq__(self, other : Move) -> bool:
         return self.move_reference == other.move_reference
 
     def __str__(self) -> str:
         return '`SURPRISE`' if self.hidden else '`{}`'.format(self.move_reference)
+
+    def __eq__(self, other):
+        return self.move_reference == other.move_reference
+
+    def __hash__(self):
+        return hash(self.move_reference)
+
 
     @classmethod
     def from_coordinates(cls, x: int, y: int, hidden: bool=False):
@@ -220,7 +227,7 @@ class Goban:
             for adjacent_move in self.get_adjacent_moves(move):
                 if self.moves[adjacent_move.coordinates] == colour:
                     group = self.build_group(adjacent_move, group)
-
+                    
         return group
 
     def get_adjacent_moves(self, move: Move) -> Group:
