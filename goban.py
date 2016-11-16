@@ -23,10 +23,7 @@ class Move:
     def __str__(self) -> str:
         return '`SURPRISE`' if self.hidden else '`{}`'.format(self.move_reference)
 
-    def __eq__(self, other):
-        return self.move_reference == other.move_reference
-
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(self.move_reference)
 
 
