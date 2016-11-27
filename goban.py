@@ -17,7 +17,7 @@ class Move:
         self.move_reference = move_reference.upper()
         self.hidden = hidden
 
-    def __eq__(self, other : Move) -> bool:
+    def __eq__(self, other) -> bool:
         return self.move_reference == other.move_reference
 
     def __str__(self) -> str:
