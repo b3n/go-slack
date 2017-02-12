@@ -1,6 +1,8 @@
 # Go Slack Bot
 Play [go](http://senseis.xmp.net/?WhatIsGo) amongst a Slack team by voting on moves. By default the move with the highest vote after one hour is played.
 
+![Example of the bot in use.](https://i.imgur.com/F0Lqlfe.png)
+
 ## Installation
 1. Create a new [bot user integration in Slack](https://my.slack.com/services/new/bot), naming it `@hikaru` and taking note of its API token.
 2. `git clone git@github.com:shobute/go-slack.git`
