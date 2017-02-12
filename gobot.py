@@ -36,9 +36,9 @@ class GoBot:
             try:
                 while True:
                     for event in self.slack_client.rtm_read():
+                        private_message = event.get('channel', [None])[0] == 'D'
                         if (event.get('type') == 'message' and event.get('text') and
-                            '<@{id}>'.format(id=self.id) in event.get('text')):
-                            private_message = event['channel'][0] == 'D'
+                        ('<@{id}>'.format(id=self.id) in event.get('text') or private_message)):
                             self.process_message(event['text'], event['channel'], event['user'], private_message)
                         if config.DEBUG:
                             print(event)
