@@ -11,7 +11,7 @@ import config
 
 
 class Move:
-    MOVE_PATTERN = re.compile(r'^([a-t])([1-9]|1[0-9])$', re.IGNORECASE)
+    MOVE_PATTERN = re.compile(r'\b([a-t])([1-9]|1[0-9])\b', re.IGNORECASE)
 
     def __init__(self, move_reference: str, hidden: bool=False) -> None:
         self.move_reference = move_reference.upper()
@@ -57,12 +57,9 @@ class Goban:
         self.captures = {'black': 0, 'white': 0}
         self.passed = False
 
-        config.ALIASES.update({k: [alias.upper() for alias in v] for k, v in config.ALIASES.items()})
+        config.VOCAB.update({k: [alias.upper() for alias in v] for k, v in config.VOCAB.items()})
 
     def vote_move(self, move: Move, user: str) -> str:
-        if move.move_reference in config.ALIASES['RANDOM']:
-            return self.vote_random(user, move.hidden)
-
         if not self.is_valid(move):
             return '{} seems to be an invalid move.'.format(move)
 
@@ -94,9 +91,6 @@ class Goban:
             return self.vote_move(choice(valid_moves), user)
 
     def is_valid(self, move: Move) -> bool:
-        if move.move_reference in config.ALIASES['PASS'] + config.ALIASES['RESIGN']:
-            return True
-
         if not move.coordinates:
             return False
 
@@ -141,13 +135,7 @@ class Goban:
         move.hidden = False
         self.votes = {}
 
-        if move.move_reference in config.ALIASES['PASS']:
-            return self.pass_move()
-        else:
-            self.passed = False
-
-        if move.move_reference in config.ALIASES['RESIGN']:
-            return self.resign()
+        self.passed = False
 
         self.place_stone(move)
 
@@ -179,11 +167,8 @@ class Goban:
         return message
 
     def resign(self) -> str:
-        message = '{} resigns. {} wins! :tada:'.format(self.next_turn_color, self._toggle_color())
-
         self.restart_game()
-
-        return message
+        return '{} resigns. {} wins! :tada:'.format(self.next_turn_color, self._toggle_color())
 
     def restart_game(self) -> None:
         self.__init__()
@@ -213,7 +198,7 @@ class Goban:
 
     def build_group(self, move: Move, group: Optional[Group]=None) -> Group:
         colour = self.moves[move.coordinates]
-        
+
         if not group:
             group = []
             if not self.moves[move.coordinates]:
@@ -224,7 +209,7 @@ class Goban:
             for adjacent_move in self.get_adjacent_moves(move):
                 if self.moves[adjacent_move.coordinates] == colour:
                     group = self.build_group(adjacent_move, group)
-                    
+
         return group
 
     def get_adjacent_moves(self, move: Move) -> Group:
