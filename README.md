@@ -1,5 +1,5 @@
 # Go Slack Bot
-Play [go](http://senseis.xmp.net/?WhatIsGo) amongst a Slack team by voting on moves. By default the move with the highest vote after one hour is played.
+Play [go](http://senseis.xmp.net/?WhatIsGo) amongst a Slack team by voting on moves. By default after one hour a move is picked randomly between the voted moves.
 
 ![Example of the bot in use.](https://i.imgur.com/F0Lqlfe.png)
 
