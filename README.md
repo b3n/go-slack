@@ -5,11 +5,15 @@ Play [go](http://senseis.xmp.net/?WhatIsGo) amongst a Slack team by voting on mo
 
 ## Installation
 1. Create a new [bot user integration in Slack](https://my.slack.com/services/new/bot), naming it `@hikaru` and taking note of its API token.
-2. `git clone git@github.com:shobute/go-slack.git`
-3. `cd go-slack`
-4. `python3 -m venv venv && source venv/bin/activate`
-5. `pip install -r requirements.txt`
-6. `python3 gobot.py API_TOKEN` (Replacing `API_TOKEN` with the token from step 1.)
+2. `git clone git@github.com:shobute/go-slack.git && cd go-slack`
+3. `python3 -m venv venv && source venv/bin/activate`
+4. `pip install -r requirements.txt`
+5. `python3 gobot.py API_TOKEN` (Replacing `API_TOKEN` with the token from step 1.)
+
+Alternatively, if you have [Docker](https://www.docker.com/):
+1. `git clone git@github.com:shobute/go-slack.git && cd go-slack`
+2. `docker build -t go-slack --build-arg token=API_TOKEN .`
+3. `docker run -it --rm go-slack`
 
 If you would like to change the name/channel/etc. you can update the [config](config.py).
 
