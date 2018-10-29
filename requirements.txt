@@ -1,6 +1,6 @@
 imgurpython==1.1.7
 Pillow==3.3.2
-requests==2.9.1
+requests==2.20.0
 six==1.10.0
 slackclient==1.0.0
 websocket-client==0.37.0
